@@ -1,22 +1,40 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
+import os
+
 from pdf_libs import pdfplumber_module, pypdf_module, pymupdf_module, pdfminer_module
 
 app = FastAPI()
 
-PDF_FILE = "pdfs/form_1786.pdf"
+# Serve static files
+app.mount("/static", StaticFiles(directory="static"), name="static")
 
-@app.get("/pdfplumber")
-def read_with_pdfplumber():
-    return {"text": pdfplumber_module.extract_text(PDF_FILE)}
+# Templates
+templates = Jinja2Templates(directory="templates")
 
-@app.get("/pypdf")
-def read_with_pypdf():
-    return {"text": pypdf_module.extract_text(PDF_FILE)}
+PDF_DIR = "static/pdfs"
 
-@app.get("/pymupdf")
-def read_with_pymupdf():
-    return {"text": pymupdf_module.extract_text(PDF_FILE)}
 
-@app.get("/pdfminer")
-def read_with_pdfminer():
-    return {"text": pdfminer_module.extract_text(PDF_FILE)}
+@app.get("/", response_class=HTMLResponse)
+def list_pdfs(request: Request):
+    pdf_files = [f for f in os.listdir(PDF_DIR) if f.lower().endswith(".pdf")]
+    return templates.TemplateResponse("index.html", {"request": request, "pdfs": pdf_files})
+
+
+@app.get("/compare/{filename}", response_class=HTMLResponse)
+def compare_pdf(request: Request, filename: str):
+    pdf_path = os.path.join(PDF_DIR, filename)
+
+    results = {
+        "pdfplumber": pdfplumber_module.extract_text(pdf_path),
+        "pypdf": pypdf_module.extract_text(pdf_path),
+        "pymupdf": pymupdf_module.extract_text(pdf_path),
+        "pdfminer": pdfminer_module.extract_text(pdf_path),
+    }
+
+    return templates.TemplateResponse(
+        "compare.html",
+        {"request": request, "filename": filename, "results": results},
+    )

@@ -4,3 +4,7 @@ pdfplumber
 PyMuPDF
 pdfminer.six
 pypdf
+pdfrw
+borb
+camelot-py[cv]
+tabula-py
